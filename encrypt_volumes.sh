@@ -207,7 +207,7 @@ do
     for volume in $volume_data
     do
         # assign variables for use
-        volume_id=$(echo $volume | jq -r '.VolumeId[0]') 
+        volume_id=$(echo $volume | jq -r '.VolumeId[0]')
         volume_encryption=$(echo $volume | jq -r ".Encrypted")
         volume_AvailabilityZone=$(echo $volume | jq -r ".AvailabilityZone")
         volume_type=$(echo $volume | jq -r ".VolumeType")
@@ -216,7 +216,7 @@ do
         volume_path=$(echo $volume | jq -r ".Device[0]") 
         volume_tags=`aws ec2 describe-tags --filters "Name=resource-id,Values=$volume_id" | jq -c '.Tags[]'`
         volume_keys=$(echo $volume | jq -r ".KmsKeyId")
-        
+
         TAGS_COMPLETION=""
         tags=""
 
@@ -228,11 +228,14 @@ do
                 key=$(echo $tag | jq '.Key')
                 if [ -z `echo $key | sed -n '/^"aws/p'` ]
                 then
-                    tags=$tags"{Key=$key,Value=$value}"    
+                    tags=$tags"{Key=$key,Value=$value}"
                 fi
             done
-            tags=$(echo $tags | sed -s 's/}{/},{/g' )
+            tags=$(echo $tags | sed -E 's/}{/},{/g' )
+            echo $tags
             TAGS_COMPLETION=" --tag-specifications ResourceType=snapshot,Tags=[$tags]"
+        else 
+            echo "Volume Tags Empty!!!!!!!!!!!!!1!1!"
         fi 
         
         echo "    Volume Id: $volume_id"
@@ -319,15 +322,10 @@ do
         echo "        Encrypted Volume Attached."
         echo "....................................................."
 
-        # put machine to previous state
-        
-        
         volume_count=$((volume_count+1))
-    done 
-
-
+    done
+    # put machine to previous state
     recover_instance_state $instance_id
-
     if [ $previous_power_state == "running" ]
     then
         echo "Restarting the instance: $instance_id"
@@ -336,8 +334,6 @@ do
         echo "this instance is now:"
         aws ec2 describe-instances --output json --query "Reservations[*].Instances[*]" --filter Name=instance-id,Values=$instance_id | jq -r '.[0][0].State.Name'
     fi
-
-
 
 instance_count=$((instance_count+1))
 done
